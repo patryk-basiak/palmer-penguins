@@ -1,0 +1,126 @@
+---
+title: "Palmer Penguins Analysis"
+author: "Patryk Basiak"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+# Exploratory Data Analysis
+
+## View data
+
+```{r load data, echo=TRUE}
+library(palmerpenguins)
+data(penguins)
+head(penguins)
+```
+## Penguins species distrubtion
+
+```{r chart, echo=FALSE}
+library(ggplot2)
+ggplot(penguins, aes(x = species, fill=species)) + geom_bar() + theme_minimal() + labs(title="Penguins per species", 
+     x = "Species",
+     y = "Amount")
+```
+```{r import hmisc, echo=FALSE}
+library(Hmisc)
+```
+
+## Penguin sexes
+Distrubtion here shows that sex cannot be a usefull paramter for prediction because in all species theres is almost 50-50 distrbution in sexes.
+```{r disrbution sexes, echo=TRUE}
+ggplot(penguins, aes(x = sex, fill=species)) + geom_bar() + theme_minimal() + labs(title="Penguins sexes", 
+     x = "Sex",
+     y = "Amount")
+```
+
+## Mass per species
+
+Here we can clearly see that Gentoo are much more heavy than other species.
+```{r mass plot, echo=TRUE}
+library(dplyr)
+
+ggplot(penguins, aes(x = species, y = body_mass_g, fill = species)) + geom_boxplot() + labs(title = "Distrubtion mass of penguins per species", y = "Mass", x = "Species") + theme_minimal()
+
+```
+```{r number of nan values, echo=TRUE}
+colSums(is.na(penguins))
+```
+
+
+```{r desribe}
+ggplot(penguins, aes(x = island, fill = species)) + geom_bar() + labs(title = "Amount of penguins per island", y = "Amount", x = "Island") + theme_minimal()
+```
+```{r }
+ggplot(penguins, aes(x = species, y = bill_length_mm, fill = species)) + geom_boxplot() + labs(title = "Bill length", y = "bill length (mm)", x = "Species") + theme_minimal()
+```
+```{r  }
+ggplot(penguins, aes(x = species, y = bill_depth_mm, fill = species)) + geom_boxplot() + labs(title = "Bill depth", y = "bill depth (mm)", x = "Species") + theme_minimal()
+```
+```{r  }
+ggplot(penguins, aes(x = species, y = flipper_length_mm, fill = species)) + geom_boxplot() + labs(title = "Flipper length", y = "flipper length (mm)", x = "Species") + theme_minimal()
+```
+
+# Prediction
+
+## Data cleaning 
+```{r clean nan values, echo=TRUE}
+penguins_smart <- na.omit(penguins)
+```
+```{r check for linear spearation}
+ggplot(penguins_smart, aes(x = bill_length_mm, y = flipper_length_mm, color = species, shape = island)) +
+  geom_point(size = 3, alpha = 0.7) +
+  labs(title = "Relation beetwen lenght of bill to length of flipper",
+       subtitle = "Visible speration beetwen species") +
+  theme_minimal()
+
+```
+# Train test split
+
+```{r train test split, echo=TRUE}
+library(caret)
+
+set.seed(123)
+train_index <- createDataPartition(penguins_smart$species, p = 0.8, list = FALSE)
+
+train_data <- penguins_smart[train_index, ]
+test_data  <- penguins_smart[-train_index, ]
+
+```
+
+# Random Forest
+```{r describe, echo=TRUE}
+library(randomForest)
+
+rf_model <- randomForest(species ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g + island, data = train_data,
+                         importance = TRUE)
+
+print(rf_model)
+```
+
+```{r prediction, echo=TRUE}
+predictions <- predict(rf_model, test_data)
+
+accuracy <- mean(predictions == test_data$species)
+
+print(accuracy)
+table(Predicted = predictions, Actual = test_data$species)
+```
+```{r raandom forest analysis, echo=TRUE}
+varImpPlot(rf_model)
+```
+# Conclusion
+
+The Palmer Penguins dataset consists of various morphological parameters, including bill length, bill depth, flipper length, and body mass. The Random Forest model proved to be highly effective, achieving an accuracy of approximately 98.46% in classifying the three species.
+
+Analysis of variable importance indicates that bill_length_mm is the most critical predictor for species differentiation. Futhermore, body_mass_g was found to be the least influential variable. This result is consistent with the exploratory analysis, which shows a significant overlap in body mass between the Adelie and Chinstrap species, making it a less reliable metric for classification compared to bill dimensions.
+
+
+
